@@ -1,5 +1,4 @@
 import moment from "moment";
-import * as Sentry from "@sentry/node";
 import { isNil } from "lodash";
 import CheckContactOpenTickets from "../../helpers/CheckContactOpenTickets";
 import SetTicketMessagesAsRead from "../../helpers/SetTicketMessagesAsRead";
@@ -14,6 +13,7 @@ import GetTicketWbot from "../../helpers/GetTicketWbot";
 import { verifyMessage } from "../WbotServices/wbotMessageListener";
 import AppError from "../../errors/AppError";
 import { GetCompanySetting } from "../../helpers/CheckSettings";
+import formatBody from "../../helpers/Mustache";
 
 interface TicketData {
   status?: string;
@@ -103,7 +103,7 @@ const UpdateTicketService = async ({
     const oldQueueId = ticket.queueId;
 
     if (oldStatus === "closed") {
-      await CheckContactOpenTickets(ticket.contact.id);
+      await CheckContactOpenTickets(ticket.contactId, ticket.whatsappId);
       chatbot = null;
       queueOptionId = null;
     }
@@ -153,7 +153,7 @@ const UpdateTicketService = async ({
         !isNil(complationMessage) &&
         complationMessage !== ""
       ) {
-        const body = `${complationMessage}`;
+        const body = formatBody(`${complationMessage}`, ticket);
 
         if (ticket.channel === "whatsapp" && !ticket.isGroup) {
           const sentMessage = await SendWhatsAppMessage({ body, ticket });
@@ -294,7 +294,9 @@ const UpdateTicketService = async ({
 
     return { ticket, oldStatus, oldUserId };
   } catch (err) {
-    Sentry.captureException(err);
+    if (err instanceof AppError) {
+      throw err;
+    }
     throw new AppError("Error updating ticket", 500, err);
   }
 };

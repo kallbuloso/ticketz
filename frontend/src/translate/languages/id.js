@@ -880,7 +880,8 @@ const messages = {
         editing: "Mengedit",
       },
       message: {
-        edited: "Diedit"
+        edited: "Diedit",
+        forwarded: "Diteruskan",
       },
 
       contactDrawer: {
@@ -918,6 +919,7 @@ const messages = {
       messageOptionsMenu: {
         delete: "Hapus",
         edit: "Edit",
+        forward: "Teruskan",
         history: "Riwayat",
         reply: "Balas",
         confirmationModal: {
@@ -966,6 +968,7 @@ const messages = {
         },
       },
       backendErrors: {
+        ERR_FORBIDDEN: "Akses ditolak. Periksa izin Anda.",
         ERR_NO_OTHER_WHATSAPP: "Harus ada setidaknya satu WhatsApp default.",
         ERR_NO_DEF_WAPP_FOUND: "Tidak ada WhatsApp default yang ditemukan. Periksa halaman koneksi.",
         ERR_WAPP_NOT_INITIALIZED: "Sesi WhatsApp ini belum diinisialisasi. Periksa halaman koneksi.",

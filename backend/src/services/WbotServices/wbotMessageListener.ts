@@ -75,7 +75,6 @@ interface IMe {
 
 const writeFileAsync = promisify(writeFile);
 
-const createTicketMutex = new Mutex();
 const wbotMutex = new Mutex();
 const ackMutex = new Mutex();
 
@@ -597,7 +596,8 @@ export const verifyMediaMessage = async (
   ticket: Ticket,
   contact: Contact,
   wbot: Session = null,
-  messageMedia = null
+  messageMedia = null,
+  userId: number = null
 ): Promise<Message> => {
   const io = getIO();
   const quotedMsg = await verifyQuotedMessage(msg);
@@ -626,8 +626,9 @@ export const verifyMediaMessage = async (
   const messageData = {
     id: msg.key.id,
     ticketId: ticket.id,
+    userId,
     contactId: msg.key.fromMe ? undefined : contact.id,
-    body: body || media?.filename,
+    body: body || "",
     fromMe: msg.key.fromMe,
     read: msg.key.fromMe,
     mediaUrl,
@@ -641,7 +642,7 @@ export const verifyMediaMessage = async (
   };
 
   await ticket.update({
-    lastMessage: body || media?.filename
+    lastMessage: body || media?.filename ? `📎 ${media?.filename}` : ""
   });
 
   const newMessage = await CreateMessageService({
@@ -683,7 +684,8 @@ export const verifyMediaMessage = async (
 export const verifyMessage = async (
   msg: proto.IWebMessageInfo,
   ticket: Ticket,
-  contact: Contact
+  contact: Contact,
+  userId: number = null
 ) => {
   const io = getIO();
   const quotedMsg = await verifyQuotedMessage(msg);
@@ -692,6 +694,7 @@ export const verifyMessage = async (
   const messageData = {
     id: msg.key.id,
     ticketId: ticket.id,
+    userId,
     contactId: msg.key.fromMe ? undefined : contact.id,
     body,
     fromMe: msg.key.fromMe,
@@ -709,7 +712,10 @@ export const verifyMessage = async (
     lastMessage: body
   });
 
-  await CreateMessageService({ messageData, companyId: ticket.companyId });
+  const newMessage = await CreateMessageService({
+    messageData,
+    companyId: ticket.companyId
+  });
 
   if (!msg.key.fromMe && ticket.status === "closed") {
     await ticket.update({ status: "pending" });
@@ -738,6 +744,8 @@ export const verifyMessage = async (
         ticketId: ticket.id
       });
   }
+
+  return newMessage;
 };
 
 export const verifyEditedMessage = async (
@@ -1727,17 +1735,12 @@ const handleMessage = async (
       }
     }
 
-    const { ticket, justCreated } = await createTicketMutex.runExclusive(
-      async () => {
-        const result = await FindOrCreateTicketService(
-          contact,
-          wbot.id!,
-          unreadMessages,
-          companyId,
-          groupContact
-        );
-        return result;
-      }
+    const { ticket, justCreated } = await FindOrCreateTicketService(
+      contact,
+      wbot.id!,
+      unreadMessages,
+      companyId,
+      groupContact
     );
 
     // voltar para o menu inicial
@@ -2007,7 +2010,7 @@ const verifyRecentCampaign = async (
           confirmation: true
         });
         await campaignQueue.add(
-          "DispatchCampaign",
+          "DispatchConfirmedCampaign",
           {
             campaignShippingId: campaignShipping.id,
             campaignId: campaignShipping.campaignId
